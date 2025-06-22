@@ -1,0 +1,129 @@
+#
+# Input files
+#
+# Input parameters for the global train/CV data. Can be local or a path to an S3
+# with a 's3://' prefix.
+#
+# E.g.
+#   raw_data_train: s3://bucket/path/to/data.ftr
+#   metadata_train: s3://bucket/path/to/metadata.tsv
+#
+# The input TCRs are provided in the feather format, one row per clonotype,
+# (typically at nucleotide level, which can result in identical CDR3 amino acid
+# sequences) with the following columns:
+#   `v_gene': V gene name
+#   'cdr3': CDR3 amino acid sequence inclusive of the positions corresponding to
+#     the conserved N-terminal cysteine and C-terminal phenylalanine
+#   'cdr3_nt': CDR3 nucleotide sequence. Only used filtering out blacklisted
+#     TCRs.
+#   'templates': Number of reads/UMIs supporting each clonotype.
+#   'sample_name': Sample name of each clonotype
+#
+# The metadata data file is a TSV file. The required columns are:
+#   'sample_name': A distinct column that corresponds to the `sample_name`
+#     column in the TCR data file.
+#   'productive_rearrangements': The total number of TCRs in the sample.
+#   'productive_templates': The total number of TCR reads/UMIs in the sample.
+#
+# The metadata file can contain additional columns that can
+# be used as the main predictor or covariates in the GLM. See README for
+# details.
+raw_data_train: "serumdetect_tcr_data.2024-09-20.ftr"
+metadata_train: "serumdetect_tcr_data.2024-09-20.metadata.tsv"
+
+
+# External test datasets for the global or the CV train split data. Can be local
+# or a path to an S3 with a 's3://' prefix.
+#
+# E.g.
+#   test_data:
+#      some_held_out_data_label:
+#       data: s3://bucket/path/to/data.ftr
+#       metadata: s3://bucket/path/to/metadata.tsv
+#
+# The file formats match those of `raw_data_train` and `metadata_train`.
+test_data: {}
+
+
+# An optional path to file with TCRs to exclude from analysis expected to have
+# column names `v_gene`, `j_gene`, `cdr3_nt`. If provided, these TCRs will be
+# excluded from the analysis. Can be local or a path to an S3 with a 's3://'
+# prefix.
+blacklisted_tcrs: config/Q42_meta_repertoire.top_500.2024-05-09.csv.gz
+
+
+#
+# TCR filtering parameters
+#
+tcr_params:
+  # Remove samples with fewer than this number of total TCR clonotypes.
+  min_productive_rearrangements: 0
+
+  # Remove samples with fewer than this number of total TCR reads/UMIs.
+  min_productive_templates: 0
+
+  # Only TCRs with CDR3 lengths in this list will be included in the analysis.
+  cdr3_len: [10, 11, 12, 13, 14, 15, 16]
+
+
+cv:
+  # Number of CV folds to use for cross-validation inclusive of clustering. If
+  # null, then no full cross-validation is performed.
+  num_cv_folds: 10
+
+  # Column name in metadata to use for stratification in CV. If null, no
+  # stratification is performed.
+  cv_grouping_colname: "is_cancer"
+
+
+#
+# Settings for GLM fitting.
+#
+glm:
+  # Whether TCR/RFU count is calculated by summing the `templates` column or by
+  # simply tallying the number of distinct clonotypes (default).
+  count_templates: false
+
+  # The regression includes a polynomial term of the repertoire depth (median
+  # UMI count) term with the order specified by `depth_poly_order`. Currently
+  # column `mean_umi_count_iqr` and `umi_count_pre_M` are computed in rule
+  # `preprocess_tcr_data` from the `templates` column of the TCR data.
+  depth_colnames: ["mean_umi_count_iqr", "umi_count_pre_M"]
+  depth_poly_order: 3
+
+  # Minimum number of subjects with a non-zero count for a TCR/RFU to be fitted
+  # using DESeq2.
+  min_subject_count: 15
+
+# Phenotype columns to use in GLM. These are used in addition to the main
+# covariate of interest, i.e. the covariate in the wildcard
+# `glm_stats~<covariate>`, e.g. `glm_stats~is_cancer`. These columns must be
+# present in the metadata table.
+glm_covariates:
+  - age_years
+  - Gender
+  - race_parsed
+  - VJ_lot
+
+
+# FDR cutoff for declaring a GLM test significant.
+fdr_cutoff: 0.1
+
+# Whether to run batchable rules in batch. If true, RFU/TCR counts log-LR
+# calculation jobs will be batched to run all d_c settings in
+# config/cdp_paramspace.csv and all rfu filtering parameters in
+# config/rfu_filtering_params.csv.
+batch_jobs: false
+
+
+# Number of threads to use for parallelizable rules.
+threads: 8
+# The amount of memory to request for the initial TCR dataset preprocessing
+# rule. Memory use for all other rules are computed from the input file sizes to
+# those rules.
+mem_mb: 50000
+
+
+# Docker image for the `serum-rfu-formation` package. Must be be an address that
+# Singularity can pull from, i.e. prefixed with `docker://`.
+serum_rfu_formation_docker: "docker://048048715011.dkr.ecr.us-east-1.amazonaws.com/tcrnn:latest"

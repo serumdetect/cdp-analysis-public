@@ -1,0 +1,85 @@
+"""Snakemake workflow for `cdp-analysis`"""
+
+import snakemake.io
+import snakemake.utils
+import pandas as pd
+
+
+configfile: "config/config.yaml"
+
+
+cdp_paramspace = snakemake.utils.Paramspace(
+    pd.read_csv(
+        "config/cdp_paramspace.csv", header=0, dtype=object, comment="#"
+    ).drop(columns=["is_slow_d_c"])
+)
+dist_normalization_paramspace = snakemake.utils.Paramspace(
+    cdp_paramspace.loc[:, ["normalize_dist"]].drop_duplicates()
+)
+
+
+# `rfu_filtering_paramspace` contains the combinations of RFU filtering
+# parameters.
+#
+# `rfu_size_paramspace` contains the parameter choices for TCR size alone.
+rfu_filtering_paramspace = snakemake.utils.Paramspace(
+    pd.read_csv(
+        "config/rfu_filtering_params.csv", header=0, dtype=object, comment="#"
+    )
+)
+rfu_size_paramspace = snakemake.utils.Paramspace(
+    rfu_filtering_paramspace.dataframe[["min_size"]].drop_duplicates()
+)
+
+
+def size_mb(input_file):
+    """Helper function for checking the size of an input in MB.
+
+    The definition of class InputFiles in Snakemake v7 suggests that the file
+    size is supposed to be reported in bytes.
+
+        class InputFiles(Namedlist):
+            @property
+            def size(self):
+                return sum(f.size for f in self)
+
+            @property
+            def size_mb(self):
+                return self.size / 1024 / 1024
+
+    However, in the case of a file in AWS S3, the size is reported in kilobytes
+    instead. This function fixes the size of an input file in MB when Snakemake
+    version is 7 and the default is S3.
+    """
+    if input_file.remote_object is None:
+        size_bytes = input_file.size
+    else:
+        size_bytes = input_file.remote_object.size()
+    return size_bytes / 1024
+
+
+def get_glm_covariates(wildcards):
+    """Return the covariates for the GLM analysis from config.yaml."""
+    config_covariates = config["glm_covariates"]
+    predictor = wildcards.predictor
+    if predictor in config_covariates:
+        raise ValueError(f"Predictor '{predictor}' cannot also be a covariate.")
+    return config_covariates
+
+
+NO_MIN_SIZE_FILTERING = rfu_size_paramspace.wildcard_pattern.format(min_size=1)
+NO_RFU_FILTERING = rfu_filtering_paramspace.wildcard_pattern.format(
+    min_size=1, min_expansion=0, min_expanded_indivs=0
+)
+
+
+# Main workflow snakefiles.
+include: "rules/wildcard_constraints.smk"
+include: "rules/prepare_tcr_data.smk"
+include: "rules/annotate_tcrs_and_rfus.smk"
+include: "rules/differential_rfu_analysis.smk"
+include: "rules/rfu_filtering.smk"
+include: "rules/feature_generation.smk"
+include: "rules/query_feature_generation.smk"
+include: "rules/augment_metadata.smk"
+include: "rules/calculate_rfu_stats.smk"

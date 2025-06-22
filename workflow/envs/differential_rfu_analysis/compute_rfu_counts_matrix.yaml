@@ -1,0 +1,8 @@
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - loguru=0.7.2
+  - polars=1.2.1
+  - pyarrow=10.0.1

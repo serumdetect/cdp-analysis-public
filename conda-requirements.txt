@@ -1,0 +1,35 @@
+# Requirements for local package tcrutils
+bioconductor-apeglm
+bioconductor-deseq2
+bioconductor-genomeinfodbdata
+bioconductor-glmgampoi
+bioconductor-scuttle
+bioconductor-summarizedexperiment
+
+# Other R requirements
+r-arrow>=14
+r-dofuture
+r-dplyr
+r-logger
+r-pbapply
+r-progress
+r-progressr
+
+# Python requirements
+boto3
+loguru
+matplotlib
+numpy
+pandas
+polars
+poppler>=23.03.0
+pyarrow>=14
+python-kubernetes
+s3fs
+scikit-learn
+seaborn
+snakemake<8
+tqdm
+
+# Other requirements
+singularity

@@ -1,0 +1,7 @@
+normalize_dist,d_c,is_slow_d_c
+1,1.1,True
+1,1.2,False
+1,2.2,False
+0,11,True
+0,12,False
+0,22,False

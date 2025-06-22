@@ -1,0 +1,8 @@
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - bioconductor-apeglm=1.16.0
+  - bioconductor-deseq2=1.34.0
+  - bioconductor-glmgampoi=1.6.0

@@ -1,0 +1,26 @@
+# Ignore all files by default
+/*
+__pycache__/
+
+# Include the Snakemake workflow
+!/workflow
+
+# Include configuration and other project files
+!/README.md
+!/config
+!/.gitignore
+!/conda-requirements.txt
+!/Dockerfile
+!/Makefile
+!/.lintr
+!/.pyproject.toml
+!/HISTORY.md
+!/.bumpversion.cfg
+
+# Include tests folder
+!/tests/
+!/tests/**
+/tests/**/__pycache__
+
+# Include LICENSE
+!LICENSE
